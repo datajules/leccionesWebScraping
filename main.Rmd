@@ -1,0 +1,269 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Web Scraping un poquito más avanzado y por eso quería ver si podíamos tener una asesoría este domingo.
+
+scrapear una página desde 0 y conocer el razonamiento sobre por qué elegir X o Y programa sobre otro para scrapear. Y algunas dudas puntuales
+
+
+
+
+
+# Web Scrapping
+
+EL web scrapping es una técnica empleada para recolectar información directamente de
+las fuentes web de forma automatizada con el fin de estructurar la información
+encontrada en las páginas web cuyo fin natural no es el análisis, si no la interaccción
+con los usuarios. Pero dadas sus características es suceptible de ser usada para la
+ciencia de datos.
+
+## ¿Es legal escrappear?
+La información contenida en las páginas web es pública y ha sido puesta a disposición
+de los usuarios por los empresas y negocios que administran las páginas web. En
+ muchas ocaciones las páginas muestran la información con fines específicos y no
+ desean que sean recolectadas de forma automatizada por bots. Por otro lado, los 
+ bots automatizados al ser capaces de enviar múltiples solicitudes pueden interferir
+ la operación de las páginas, y esto puede ser considerado un ataque. Para evitar 
+ que esto ocurra es necesario agregar lags, para que los bots no envíen demasiadas consultas en poco tiempo. 
+ 
+ Muchas páginas web incluyen una sección de términos y condiciones, en las cuales 
+ se especifica si existe alguna restricción específica al uso de programas automatizados
+ para extraer datos como los bots de webscrapping. En este caso, el usuario al
+ usar la página está aceptando los términos y condiciones de forma implicita, y por ende
+ no debería incumplirlos, por lo que en estos caso emplear las técnicas de web scrapping
+ no sería recomendable. Dependiendo del uso que se le de a los datos recopilados, 
+ las empresas podrían no interesarse demasiado, si no interrumpen su operación o bien
+ si no se emplean de forma ventajosa para lucrar, perjudicar o interferir en las áreas
+ de negocio y operación.
+ 
+ Además de las restricciones legales, las empresas agregan mecanismos de seguridad a sus sitios
+ web para evitar la extracción de información. Recursos como:
+ 
+ * Captchas: Consisten en tareas relativamente fáciles de hacer para un ser humano, pero 
+ difísiles de imitar por parte de una máquina. Por ejemplo interpretar números y caracteres con tipografías y colores complicados. Identificar imagenes específicas como semáfores y cruces peatonales. O deslizar barras solo hasta cierto punto.
+ * Uso de cookies de navegación: Se envían cookies que luego son demandadas para 
+ mostrar que se trata de un usuario humano y no de un bot.
+ * Limite de consultas por IP: Se limita el número de consultas que se pueden realizar en un sitio
+ para que se acerque más al comportamiento que se observaría en un usuario natural.
+ 
+ ## El archivo robots.txt
+
+Las empresas no desean bloquear a todos los bots que acceden a sus sitios. Por el
+contrario existen bots que no solo son permitidos, sino alentados. Tal es el caso
+de los spyder que usa google para acceder a las páginas. Las empresas desean que sus
+sitios sean indexados por google, y por ende quieren que sus bots registren el sitio.
+
+Existe un estandar en el cuál se muestra los bots que son permitidos (*Allow*)por un sitio
+en específico, o bien los que no son deseados (*Disallow*). Regularmente podemos encontrar
+este archivo en la página raiz del sitio, seguido por la siguiente terminación */robots.txt*.
+Por ejemplo: [https://es.wikipedia.org/robots.txt](https://es.wikipedia.org/robots.txt)
+
+
+
+### Componentes de una página web
+
+1. [Código html](https://www.w3schools.com/html/) : Consiste en un lenguaje de marcado empleado para desplegar el hipertexto de una página web.
+
+2. Código [css](https://www.w3schools.com/css/) : Es un lenguaje de estilo en cascada. Permite hacer referencia a elementos html para darles estilo.
+
+3. [Lenguaje javascript](https://www.w3schools.com/js/): Permite darle interactividad a la página.
+
+
+### 1. [rvest](https://www.rstudio.com/blog/rvest-easy-web-scraping-with-r/) 
+
+Es la librería del entorno de tidyverse. Esta inspirada en la librería  
+beautiful soup de python. 
+Es fácil de utilizar. 
+Lee el código fuente 
+directamente de las páginas web. 
+Tiene utilidades para rellenar y enviar formularios.
+
+### Pasos para usar rvest 
+
+#### 1. Llamar la librería
+```{r}
+#install.packages('rvest')
+library(rvest)
+library(tidyverse)
+```
+
+
+
+
+#### 2. Leer el sitio web
+```{r}
+url <- 'https://es.wikipedia.org/wiki/Star_Wars'
+starwars <- read_html(url)
+```
+
+#### 3. Acceder a un elemento usando un selector
+Es posible referir elementos html, o bien emplear selectores xpath y css.
+```{r}
+# Refiriendo un elemento html
+titulo <- starwars %>% html_element('h1')
+# Usando un selector Xpath 
+autor <- starwars %>% html_element(xpath = '//*[@id="mw-content-text"]/div[1]/table[1]/tbody/tr[3]/td')
+```
+
+#### 4. Usar los elementos seleccionados
+Una vez apuntado el selector al elemento que deseamos analizar, el siguiente paso es extraer la información que necesitamos.
+
+* Extraer texto
+```{r}
+titulo %>% html_text()
+autor %>% html_text()
+autor %>% html_text2()
+```
+
+* Extraer una tabla
+```{r}
+personajes <- starwars %>%  html_element(xpath = '//*[@id="mw-content-text"]/div[1]/table[5]/tbody')
+
+tabla_personajes <- personajes %>% html_table()
+```
+
+#### 5. Envío de fromularios
+Para escribir y enviar formularios es necesario crear primero una sesión de navegación.
+
+1. Establecemos la sesión
+```{r}
+url <- 'https://es.wikipedia.org/wiki/Star_Wars'
+navegador <- session(url)
+```
+
+2. Apuntamos al elemto con el formulario
+```{r}
+formulario <- navegador %>% html_element(xpath = '//*[@id="searchform"]')
+```
+
+3. Declaramos el elemento como formulario
+```{r}
+formulario <- formulario %>% html_form()
+```
+
+4. Rellenamos el formulario
+```{r}
+formulario_lleno <- formulario %>% set_values('title' = 'R2-D2')
+```
+
+5. Enviamos el formulario
+```{r}
+navegador <- navegador %>% submit_form(formulario_lleno)
+```
+
+6. Ya podemos acceder a los elementos
+```{r}
+navegador %>% html_element('h1') %>% html_text2()
+```
+
+
+
+
+## 2. Selenium
+[Selenium](https://cran.r-project.org/web/packages/RSelenium/RSelenium.pdf) es una API empleada para automatizar browsers como Crhome, Firefos, y 
+explorer. Se emplea para realizar test automatizados de aplicaciones web, o 
+realizar tareas de administración en los sitios. Pero debido a sus 
+características puede ser empleado para simular navegación, y acceder al código
+de las páginas con propósitos de web scrapping.
+
+Seleniu tiene como ventaja, que al tomar control del browser realiza todas las
+acciones como envío y recepción de cokies, tal como lo haría el navegador si
+fuera operado por una persona.
+
+Para protejer su información, las páginas en ocaciones no emplean solo html si 
+no que recurren a applets de javascript que ocultan toda la información y solo 
+despliegan parte conforme el usuario la va demandando. En estos casos, si nos 
+limitamos a leer el código html de la página en un momento dado, capataremos solo
+una parte, o nada, de la información que deseamos consultar. En estos casos
+simular navegación mediante selenium, nos puede resultar más útil.
+
+Una ventaja adicional de emplear Selenium consiste en que al emplear el navegador
+directamnte estamos reciviendo y enviando las cookies necesarias para mostrar
+que se trata de un usuario y no necesariamente de un bot automatizado.
+
+### Pasos para usar Selenium con R
+
+#### 1. Instala la librería
+
+```{r}
+#install.packages('RSelenium')
+library(RSelenium)
+```
+
+#### 2. Creamos un objeto driver de Selenium.
+
+```{r}
+remDr <- remoteDriver(
+  remoteServerAddr = "localhost",
+  port = 4445L
+)
+```
+
+#### 3. Creamos una instancia de driver de selenium
+
+Es posible emplear los navegadores *firefox*, *crhome*, o  *internet explorer*.
+El puerto registra el canal usado por el navegador, por definición se emplea 4567L, pero es posible modificarlo, sobre todo si se desea tener varias seciones al mismo tiempo
+
+```{r}
+driver <- RSelenium::rsDriver(browser = "firefox",port = 4572L, verbose = FALSE)
+remDr <- driver$client
+```
+
+#### 4. Operaciones con el navegador
+
+* Visita a una página
+
+```{r}
+url <- 'https://es.wikipedia.org/wiki/Star_Wars'
+remDr$navigate(url)
+```
+
+* Usar un selector para ubicar un elemento
+
+```{r}
+titulo <- remDr$findElement(using = "xpath", '//*[@id="mw-content-text"]/div[1]/table[1]/tbody/tr[3]/td/a')
+```
+
+* Acceder al texto de un elemento
+```{r}
+titulo$getElementText()
+```
+
+* Dar click a algún elemento
+```{r}
+titulo$clickElement()
+```
+
+* Escribir sobre un formulario
+```{r}
+campo <- remDr$findElement(using = 'xpath', '//*[@id="searchInput"]')
+campo$sendKeysToElement(list('R2-D2', key = 'enter'))
+```
+
+* Limpiar un formulario
+```{r}
+campo <- remDr$findElement(using = 'xpath', '//*[@id="searchInput"]')
+campo$sendKeysToElement(list('Luke Skywoker'))
+campo$clearElement()
+```
+
+* Controles de navegación
+```{r}
+remDr$refresh()
+remDr$goBack()
+remDr$goForward()
+```
+
+* Cerrar la sesión
+```{r}
+remDr$close()
+```
+
+
+
+
+
+
+
